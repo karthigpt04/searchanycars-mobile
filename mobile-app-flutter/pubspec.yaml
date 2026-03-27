@@ -1,0 +1,48 @@
+name: searchanycars
+description: "SearchAnyCars - India's Trusted Used Car Platform"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Navigation
+  go_router: ^15.1.2
+
+  # State Management
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # UI & Design
+  google_fonts: ^6.2.1
+  lucide_icons: ^0.257.0
+  flutter_svg: ^2.0.17
+  shimmer: ^3.0.0
+
+  # Storage
+  shared_preferences: ^2.3.4
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+
+  # Network
+  dio: ^5.7.0
+  cached_network_image: ^3.4.1
+
+  # Utils
+  intl: ^0.20.2
+  flutter_animate: ^4.5.2
+  smooth_page_indicator: ^1.2.0+3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  build_runner: ^2.4.15
+  riverpod_generator: ^2.6.3
+
+flutter:
+  uses-material-design: true
