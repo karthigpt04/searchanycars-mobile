@@ -1,10 +1,22 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/car.dart';
+import '../models/listing.dart';
 import '../models/mock_data.dart';
+import '../repositories/car_repository.dart';
+import '../utils/cache_manager.dart';
 
-// Wishlist state
+// ============================================================
+// WISHLIST — persisted in Hive
+// ============================================================
+
 class WishlistNotifier extends StateNotifier<List<int>> {
-  WishlistNotifier() : super([1, 3]); // Pre-saved cars 1 & 3
+  WishlistNotifier() : super(CacheManager.getWishlistIds()) {
+    // If Hive was empty, use default mock IDs
+    if (state.isEmpty) {
+      state = [1, 3];
+      CacheManager.saveWishlistIds(state);
+    }
+  }
 
   void toggle(int carId) {
     if (state.contains(carId)) {
@@ -12,6 +24,7 @@ class WishlistNotifier extends StateNotifier<List<int>> {
     } else {
       state = [...state, carId];
     }
+    CacheManager.saveWishlistIds(state);
   }
 
   bool isWishlisted(int carId) => state.contains(carId);
@@ -21,27 +34,30 @@ final wishlistProvider = StateNotifierProvider<WishlistNotifier, List<int>>(
   (ref) => WishlistNotifier(),
 );
 
-// All cars provider
+// ============================================================
+// CAR PROVIDERS (legacy — kept for backward compat with widgets)
+// ============================================================
+
 final carsProvider = Provider<List<Car>>((ref) => MockData.cars);
 
-// Featured cars (first 4)
 final featuredCarsProvider = Provider<List<Car>>((ref) {
   return ref.watch(carsProvider).take(4).toList();
 });
 
-// Recently added cars (last 4)
 final recentCarsProvider = Provider<List<Car>>((ref) {
   return ref.watch(carsProvider).skip(4).toList();
 });
 
-// Wishlisted cars
 final wishlistedCarsProvider = Provider<List<Car>>((ref) {
   final wishlist = ref.watch(wishlistProvider);
   final cars = ref.watch(carsProvider);
   return cars.where((car) => wishlist.contains(car.id)).toList();
 });
 
-// Search state
+// ============================================================
+// SEARCH — works with both API and mock data
+// ============================================================
+
 class SearchNotifier extends StateNotifier<SearchState> {
   SearchNotifier() : super(const SearchState());
 
@@ -52,19 +68,40 @@ class SearchNotifier extends StateNotifier<SearchState> {
   void setFilter(String filter) {
     state = state.copyWith(activeFilter: filter);
   }
+
+  void setSortBy(String sortBy) {
+    state = state.copyWith(sortBy: sortBy);
+  }
 }
 
 class SearchState {
   final String query;
   final String activeFilter;
+  final String sortBy;
 
-  const SearchState({this.query = '', this.activeFilter = 'All'});
+  const SearchState({
+    this.query = '',
+    this.activeFilter = 'All',
+    this.sortBy = 'default',
+  });
 
-  SearchState copyWith({String? query, String? activeFilter}) {
+  SearchState copyWith({String? query, String? activeFilter, String? sortBy}) {
     return SearchState(
       query: query ?? this.query,
       activeFilter: activeFilter ?? this.activeFilter,
+      sortBy: sortBy ?? this.sortBy,
     );
+  }
+
+  /// Build API query parameters from search state
+  Map<String, dynamic> toQueryParams() {
+    final params = <String, dynamic>{};
+    if (query.isNotEmpty) params['search'] = query;
+    if (activeFilter != 'All') {
+      params['body_style'] = activeFilter;
+    }
+    if (sortBy != 'default') params['sortBy'] = sortBy;
+    return params;
   }
 }
 
@@ -72,13 +109,20 @@ final searchProvider = StateNotifierProvider<SearchNotifier, SearchState>(
   (ref) => SearchNotifier(),
 );
 
-// Filtered cars for search
+/// Search results using the repository (API or mock fallback)
+final searchResultsProvider = FutureProvider<List<Listing>>((ref) async {
+  final search = ref.watch(searchProvider);
+  final repo = ref.watch(carRepositoryProvider);
+  final params = search.toQueryParams();
+  return repo.getListings(filters: params.isEmpty ? null : params);
+});
+
+// Legacy filtered cars provider (still used by some widgets)
 final filteredCarsProvider = Provider<List<Car>>((ref) {
   final search = ref.watch(searchProvider);
   final cars = ref.watch(carsProvider);
 
   return cars.where((car) {
-    // Query filter
     if (search.query.isNotEmpty) {
       final q = search.query.toLowerCase();
       if (!car.name.toLowerCase().contains(q) &&
@@ -88,10 +132,8 @@ final filteredCarsProvider = Provider<List<Car>>((ref) {
       }
     }
 
-    // Type filter
     if (search.activeFilter != 'All') {
       final filter = search.activeFilter.toLowerCase();
-      // Simple mapping: Luxury brands, SUV models, etc.
       switch (filter) {
         case 'suv':
           return ['Toyota Fortuner', 'Hyundai Creta', 'Tata Harrier', 'Kia Seltos', 'Mahindra XUV700']
@@ -109,10 +151,12 @@ final filteredCarsProvider = Provider<List<Car>>((ref) {
   }).toList();
 });
 
-// Selected car for detail
 final selectedCarProvider = StateProvider<Car?>((ref) => null);
 
-// Compare cars
+// ============================================================
+// COMPARE
+// ============================================================
+
 final compareCarsProvider = StateNotifierProvider<CompareCarsNotifier, List<Car>>(
   (ref) => CompareCarsNotifier(),
 );
@@ -134,3 +178,16 @@ class CompareCarsNotifier extends StateNotifier<List<Car>> {
     state = [];
   }
 }
+
+// ============================================================
+// LISTING-BASED WISHLISTED ITEMS
+// ============================================================
+
+final wishlistedListingsProvider = FutureProvider<List<Listing>>((ref) async {
+  final wishlist = ref.watch(wishlistProvider);
+  final repo = ref.watch(carRepositoryProvider);
+  if (wishlist.isEmpty) return [];
+
+  final allListings = await repo.getListings();
+  return allListings.where((l) => wishlist.contains(l.id)).toList();
+});

@@ -5,6 +5,8 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../constants/colors.dart';
 import '../providers/app_provider.dart';
+import '../repositories/car_repository.dart';
+import '../utils/listing_helpers.dart';
 import '../models/car.dart';
 import '../models/mock_data.dart';
 
@@ -432,7 +434,11 @@ class CompareScreen extends ConsumerWidget {
   }
 
   void _showCarPicker(BuildContext context, WidgetRef ref) {
-    final allCars = MockData.cars;
+    // Use real listings if available, fall back to mock
+    final listingsAsync = ref.read(allListingsProvider);
+    final allCars = listingsAsync.whenOrNull(
+      data: (listings) => listings.map(listingToCar).toList(),
+    ) ?? MockData.cars;
 
     showModalBottomSheet(
       context: context,

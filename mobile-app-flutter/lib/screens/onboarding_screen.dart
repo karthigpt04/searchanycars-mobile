@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../constants/colors.dart';
 import '../models/mock_data.dart';
+import '../utils/cache_manager.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -30,11 +31,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         curve: Curves.easeInOut,
       );
     } else {
-      context.go('/home');
+      _completeOnboarding();
     }
   }
 
   void _skip() {
+    _completeOnboarding();
+  }
+
+  void _completeOnboarding() {
+    CacheManager.setOnboardingDone();
     context.go('/home');
   }
 

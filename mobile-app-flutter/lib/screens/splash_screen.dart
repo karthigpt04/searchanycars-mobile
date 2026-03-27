@@ -1,23 +1,47 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../constants/colors.dart';
+import '../providers/connectivity_provider.dart';
+import '../utils/cache_manager.dart';
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(milliseconds: 2800), () {
-      if (mounted) context.go('/onboarding');
-    });
+    _navigate();
+  }
+
+  Future<void> _navigate() async {
+    // During splash animation, silently check connectivity
+    final connectivityFuture = _checkConnectivity();
+
+    // Wait for splash animation to complete
+    await Future.delayed(const Duration(milliseconds: 2800));
+    await connectivityFuture;
+
+    if (!mounted) return;
+
+    // Check if onboarding is done
+    if (CacheManager.isOnboardingDone()) {
+      context.go('/home');
+    } else {
+      context.go('/onboarding');
+    }
+  }
+
+  Future<void> _checkConnectivity() async {
+    // Read connectivity provider to trigger init
+    ref.read(connectivityProvider);
   }
 
   @override

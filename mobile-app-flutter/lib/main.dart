@@ -4,8 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'constants/colors.dart';
 import 'router.dart';
+import 'utils/cache_manager.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Lock to portrait mode
@@ -22,6 +23,9 @@ void main() {
     systemNavigationBarColor: AppColors.bg,
     systemNavigationBarIconBrightness: Brightness.light,
   ));
+
+  // Initialize Hive cache
+  await CacheManager.init();
 
   runApp(const ProviderScope(child: SearchAnyCarsApp()));
 }

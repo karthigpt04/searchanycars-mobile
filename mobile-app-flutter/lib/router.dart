@@ -9,6 +9,9 @@ import 'screens/wishlist_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/car_detail_screen.dart';
 import 'screens/main_shell.dart';
+import 'screens/settings_screen.dart';
+import 'screens/login_screen.dart';
+import 'screens/register_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 // Shell navigator keys are managed by StatefulShellRoute
@@ -79,6 +82,21 @@ final router = GoRouter(
         final carId = int.parse(state.pathParameters['id']!);
         return CarDetailScreen(carId: carId);
       },
+    ),
+    GoRoute(
+      path: '/settings',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const SettingsScreen(),
+    ),
+    GoRoute(
+      path: '/login',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const LoginScreen(),
+    ),
+    GoRoute(
+      path: '/register',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const RegisterScreen(),
     ),
   ],
 );
