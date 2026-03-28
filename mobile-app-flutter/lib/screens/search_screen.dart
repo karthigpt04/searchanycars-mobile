@@ -11,6 +11,7 @@ import '../providers/app_provider.dart';
 import '../providers/config_provider.dart';
 import '../utils/listing_helpers.dart';
 import '../widgets/car/car_list_item.dart';
+import '../widgets/filter/filter_panel.dart';
 import '../widgets/ui/skeleton_loader.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
@@ -151,6 +152,47 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                               ),
                             ),
                           ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Filter button
+                    GestureDetector(
+                      onTap: () => _showFilterPanel(context),
+                      child: Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: AppColors.bgCard,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppColors.border, width: 1),
+                        ),
+                        child: Stack(
+                          children: [
+                            const Center(
+                              child: Icon(LucideIcons.sliders, size: 20, color: AppColors.gold),
+                            ),
+                            // Badge showing active filter count
+                            if (ref.watch(searchProvider).activeFilterCount > 0)
+                              Positioned(
+                                top: 6,
+                                right: 6,
+                                child: Container(
+                                  width: 16,
+                                  height: 16,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.gold,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      '${ref.watch(searchProvider).activeFilterCount}',
+                                      style: GoogleFonts.dmSans(fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.bg),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                     ),
@@ -514,6 +556,26 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           ),
         );
       },
+    );
+  }
+
+  void _showFilterPanel(BuildContext context) {
+    final currentState = ref.read(searchProvider);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => FilterPanel(
+        initialFilters: currentState.toAdvancedFilterMap(),
+        onApply: (filters) {
+          ref.read(searchProvider.notifier).setAdvancedFilters(filters);
+          Navigator.pop(context);
+        },
+        onReset: () {
+          ref.read(searchProvider.notifier).clearAdvancedFilters();
+          Navigator.pop(context);
+        },
+      ),
     );
   }
 

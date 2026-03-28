@@ -10,13 +10,8 @@ import '../utils/cache_manager.dart';
 // ============================================================
 
 class WishlistNotifier extends StateNotifier<List<int>> {
-  WishlistNotifier() : super(CacheManager.getWishlistIds()) {
-    // If Hive was empty, use default mock IDs
-    if (state.isEmpty) {
-      state = [1, 3];
-      CacheManager.saveWishlistIds(state);
-    }
-  }
+  WishlistNotifier() : super(CacheManager.getWishlistIds());
+
 
   void toggle(int carId) {
     if (state.contains(carId)) {
@@ -72,6 +67,45 @@ class SearchNotifier extends StateNotifier<SearchState> {
   void setSortBy(String sortBy) {
     state = state.copyWith(sortBy: sortBy);
   }
+
+  /// Sets all advanced filters at once from the filter panel map.
+  void setAdvancedFilters(Map<String, dynamic> filters) {
+    state = state.copyWith(
+      priceMin: filters['priceMin'] as double?,
+      priceMax: filters['priceMax'] as double?,
+      fuelType: filters['fuelType'] as String?,
+      transmissionType: filters['transmissionType'] as String?,
+      yearMin: filters['yearMin'] as int?,
+      yearMax: filters['yearMax'] as int?,
+      ownershipType: filters['ownershipType'] as String?,
+      maxKm: filters['maxKm'] as double?,
+      clearPriceMin: !filters.containsKey('priceMin'),
+      clearPriceMax: !filters.containsKey('priceMax'),
+      clearFuelType: !filters.containsKey('fuelType'),
+      clearTransmissionType: !filters.containsKey('transmissionType'),
+      clearYearMin: !filters.containsKey('yearMin'),
+      clearYearMax: !filters.containsKey('yearMax'),
+      clearOwnershipType: !filters.containsKey('ownershipType'),
+      clearMaxKm: !filters.containsKey('maxKm'),
+    );
+  }
+
+  /// Resets all advanced filters to null.
+  void clearAdvancedFilters() {
+    state = state.copyWith(
+      clearPriceMin: true,
+      clearPriceMax: true,
+      clearFuelType: true,
+      clearTransmissionType: true,
+      clearYearMin: true,
+      clearYearMax: true,
+      clearOwnershipType: true,
+      clearMaxKm: true,
+    );
+  }
+
+  /// Count of non-null advanced filters.
+  int get activeFilterCount => state.activeFilterCount;
 }
 
 class SearchState {
@@ -79,17 +113,89 @@ class SearchState {
   final String activeFilter;
   final String sortBy;
 
+  // Advanced filter fields
+  final double? priceMin; // in INR
+  final double? priceMax; // in INR
+  final String? fuelType;
+  final String? transmissionType;
+  final int? yearMin;
+  final int? yearMax;
+  final String? ownershipType;
+  final double? maxKm;
+
   const SearchState({
     this.query = '',
     this.activeFilter = 'All',
     this.sortBy = 'default',
+    this.priceMin,
+    this.priceMax,
+    this.fuelType,
+    this.transmissionType,
+    this.yearMin,
+    this.yearMax,
+    this.ownershipType,
+    this.maxKm,
   });
 
-  SearchState copyWith({String? query, String? activeFilter, String? sortBy}) {
+  /// Count of non-null advanced filters.
+  int get activeFilterCount {
+    int count = 0;
+    if (priceMin != null || priceMax != null) count++;
+    if (fuelType != null) count++;
+    if (transmissionType != null) count++;
+    if (yearMin != null || yearMax != null) count++;
+    if (ownershipType != null) count++;
+    if (maxKm != null) count++;
+    return count;
+  }
+
+  /// Returns a map of current advanced filter values for initializing the filter panel.
+  Map<String, dynamic> toAdvancedFilterMap() {
+    final map = <String, dynamic>{};
+    if (priceMin != null) map['priceMin'] = priceMin;
+    if (priceMax != null) map['priceMax'] = priceMax;
+    if (fuelType != null) map['fuelType'] = fuelType;
+    if (transmissionType != null) map['transmissionType'] = transmissionType;
+    if (yearMin != null) map['yearMin'] = yearMin;
+    if (yearMax != null) map['yearMax'] = yearMax;
+    if (ownershipType != null) map['ownershipType'] = ownershipType;
+    if (maxKm != null) map['maxKm'] = maxKm;
+    return map;
+  }
+
+  SearchState copyWith({
+    String? query,
+    String? activeFilter,
+    String? sortBy,
+    double? priceMin,
+    double? priceMax,
+    String? fuelType,
+    String? transmissionType,
+    int? yearMin,
+    int? yearMax,
+    String? ownershipType,
+    double? maxKm,
+    bool clearPriceMin = false,
+    bool clearPriceMax = false,
+    bool clearFuelType = false,
+    bool clearTransmissionType = false,
+    bool clearYearMin = false,
+    bool clearYearMax = false,
+    bool clearOwnershipType = false,
+    bool clearMaxKm = false,
+  }) {
     return SearchState(
       query: query ?? this.query,
       activeFilter: activeFilter ?? this.activeFilter,
       sortBy: sortBy ?? this.sortBy,
+      priceMin: clearPriceMin ? null : (priceMin ?? this.priceMin),
+      priceMax: clearPriceMax ? null : (priceMax ?? this.priceMax),
+      fuelType: clearFuelType ? null : (fuelType ?? this.fuelType),
+      transmissionType: clearTransmissionType ? null : (transmissionType ?? this.transmissionType),
+      yearMin: clearYearMin ? null : (yearMin ?? this.yearMin),
+      yearMax: clearYearMax ? null : (yearMax ?? this.yearMax),
+      ownershipType: clearOwnershipType ? null : (ownershipType ?? this.ownershipType),
+      maxKm: clearMaxKm ? null : (maxKm ?? this.maxKm),
     );
   }
 
@@ -101,6 +207,17 @@ class SearchState {
       params['body_style'] = activeFilter;
     }
     if (sortBy != 'default') params['sortBy'] = sortBy;
+
+    // Advanced filter params
+    if (priceMin != null) params['listing_price_min'] = priceMin!.toInt();
+    if (priceMax != null) params['listing_price_max'] = priceMax!.toInt();
+    if (fuelType != null) params['fuel_type'] = fuelType;
+    if (transmissionType != null) params['transmission_type'] = transmissionType;
+    if (yearMin != null) params['model_year_min'] = yearMin;
+    if (yearMax != null) params['model_year_max'] = yearMax;
+    if (ownershipType != null) params['ownership_type'] = ownershipType;
+    if (maxKm != null) params['total_km_driven_max'] = maxKm!.toInt();
+
     return params;
   }
 }

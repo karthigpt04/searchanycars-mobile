@@ -12,6 +12,7 @@ class CacheManager {
   static const String _siteConfigBox = 'site_config_cache';
   static const String _wishlistBox = 'wishlist_box';
   static const String _settingsBox = 'settings_box';
+  static const String _bookingsBox = 'bookings_box';
 
   /// Initialize Hive and open all required boxes.
   /// Must be called before any other CacheManager methods.
@@ -24,6 +25,7 @@ class CacheManager {
       Hive.openBox(_siteConfigBox),
       Hive.openBox(_wishlistBox),
       Hive.openBox(_settingsBox),
+      Hive.openBox(_bookingsBox),
     ]);
   }
 
@@ -197,6 +199,39 @@ class CacheManager {
       }
     } catch (_) {}
     return [];
+  }
+
+  // ---------------------------------------------------------------------------
+  // Bookings (permanent — no TTL)
+  // ---------------------------------------------------------------------------
+
+  /// Save a test drive booking.
+  static Future<void> saveBooking(Map<String, dynamic> booking) async {
+    final box = Hive.box(_bookingsBox);
+    final raw = box.get('bookings');
+    List<dynamic> bookings = [];
+    if (raw != null) {
+      try {
+        bookings = List<dynamic>.from(jsonDecode(raw as String) as List);
+      } catch (_) {}
+    }
+    bookings.add(booking);
+    await box.put('bookings', jsonEncode(bookings));
+  }
+
+  /// Retrieve all saved bookings.
+  static List<Map<String, dynamic>> getBookings() {
+    final box = Hive.box(_bookingsBox);
+    final raw = box.get('bookings');
+    if (raw == null) return [];
+    try {
+      final decoded = jsonDecode(raw as String) as List;
+      return decoded
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+    } catch (_) {
+      return [];
+    }
   }
 
   // ---------------------------------------------------------------------------

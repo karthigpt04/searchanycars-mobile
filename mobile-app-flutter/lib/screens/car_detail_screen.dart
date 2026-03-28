@@ -5,9 +5,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../constants/colors.dart';
 import '../models/listing.dart';
 import '../providers/app_provider.dart';
+import '../providers/config_provider.dart';
 import '../repositories/car_repository.dart';
 import '../widgets/ui/skeleton_loader.dart';
 
@@ -496,22 +498,25 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen> {
             child: Row(
               children: [
                 // Phone button
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: AppColors.bgCard,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                      color: AppColors.gold.withValues(alpha: 0.3),
-                      width: 1,
+                GestureDetector(
+                  onTap: () => _handlePhoneCall(context, ref),
+                  child: Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: AppColors.bgCard,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: AppColors.gold.withValues(alpha: 0.3),
+                        width: 1,
+                      ),
                     ),
-                  ),
-                  child: const Center(
-                    child: Icon(
-                      LucideIcons.phone,
-                      size: 22,
-                      color: AppColors.gold,
+                    child: const Center(
+                      child: Icon(
+                        LucideIcons.phone,
+                        size: 22,
+                        color: AppColors.gold,
+                      ),
                     ),
                   ),
                 ),
@@ -520,7 +525,7 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen> {
                 Expanded(
                   child: GestureDetector(
                     onTap: () {
-                      // TODO: Navigate to booking flow
+                      context.push('/book-test-drive/${widget.carId}');
                     },
                     child: Container(
                       height: 56,
@@ -1064,6 +1069,52 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen> {
         ),
       ],
     );
+  }
+
+  void _handlePhoneCall(BuildContext context, WidgetRef ref) async {
+    final siteConfigAsync = ref.read(siteConfigProvider);
+    String phoneNumber = '+919876543210'; // Default fallback
+
+    siteConfigAsync.whenData((config) {
+      if (config.contactInfo?.phone != null && config.contactInfo!.phone!.isNotEmpty) {
+        phoneNumber = config.contactInfo!.phone!;
+      }
+    });
+
+    final uri = Uri.parse('tel:$phoneNumber');
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Call $phoneNumber',
+                style: GoogleFonts.dmSans(color: AppColors.textPrimary),
+              ),
+              backgroundColor: AppColors.bgCard,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          );
+        }
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Call $phoneNumber',
+              style: GoogleFonts.dmSans(color: AppColors.textPrimary),
+            ),
+            backgroundColor: AppColors.bgCard,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildErrorState(double topPadding) {

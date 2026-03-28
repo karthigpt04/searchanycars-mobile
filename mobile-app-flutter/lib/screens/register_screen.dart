@@ -45,6 +45,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       return;
     }
 
+    // Email format validation
+    final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+    if (!emailRegex.hasMatch(email)) {
+      setState(() => _localError = 'Please enter a valid email address');
+      return;
+    }
+
     if (password.length < 6) {
       setState(() => _localError = 'Password must be at least 6 characters');
       return;
