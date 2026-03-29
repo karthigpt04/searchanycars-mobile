@@ -387,11 +387,11 @@ class HomeScreen extends ConsumerWidget {
               ),
               _buildFeaturedSection(featuredAsync, screenWidth, screenPadding, context),
 
-              // ===== S+ PREMIUM SECTION =====
-              _buildSplusSection(splusAsync, screenWidth, screenPadding, context, ref),
+              // ===== S+ PREMIUM SECTION (guaranteed visible) =====
+              _buildGuaranteedSplusSection(splusAsync, screenWidth, screenPadding, context, ref),
 
-              // ===== S+ NEW CARS SECTION =====
-              _buildSplusNewSection(splusNewAsync, screenWidth, screenPadding, context, ref),
+              // ===== S+ NEW CARS SECTION (guaranteed visible) =====
+              _buildGuaranteedSplusNewSection(splusNewAsync, screenWidth, screenPadding, context, ref),
 
               // ===== 7. RECENTLY ADDED =====
               Padding(
@@ -1943,6 +1943,377 @@ class HomeScreen extends ConsumerWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // GUARANTEED S+ PREMIUM (always shows — mock fallback)
+  // ─────────────────────────────────────────────────────────
+  Widget _buildGuaranteedSplusSection(
+    AsyncValue<List<Listing>> splusAsync,
+    double screenWidth,
+    double screenPadding,
+    BuildContext context,
+    WidgetRef ref,
+  ) {
+    // Always have data: use provider if loaded, otherwise mock
+    final providerData = splusAsync.valueOrNull;
+    final listings = (providerData != null && providerData.isNotEmpty)
+        ? providerData
+        : MockCarService.mockListings
+            .where((l) => l.isSplus && !l.isNewCar)
+            .toList();
+    if (listings.isEmpty) return const SizedBox.shrink();
+
+    final serverBaseUrl = ref.watch(serverBaseUrlProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(top: 24, left: screenPadding, right: screenPadding),
+          child: SectionHeader(
+            title: 'S+ Premium',
+            actionText: 'Explore',
+            onAction: () => context.go('/search'),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 260,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: EdgeInsets.only(left: screenPadding),
+            itemCount: listings.length,
+            itemBuilder: (context, index) {
+              final listing = listings[index];
+              final imageUrls = listing.imageUrls(serverBaseUrl);
+              return Padding(
+                padding: EdgeInsets.only(right: index < listings.length - 1 ? 16 : screenPadding),
+                child: GestureDetector(
+                  onTap: () => context.push('/car/${listing.id}'),
+                  child: Container(
+                    width: 260,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          AppColors.gold.withValues(alpha: 0.08),
+                          const Color(0xFF1A1428),
+                          AppColors.bgCard,
+                        ],
+                      ),
+                      border: Border.all(color: AppColors.gold.withValues(alpha: 0.2)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.gold.withValues(alpha: 0.08),
+                          blurRadius: 20,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Image
+                        ClipRRect(
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                          child: SizedBox(
+                            height: 130,
+                            width: 260,
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                if (imageUrls.isNotEmpty)
+                                  CachedNetworkImage(
+                                    imageUrl: imageUrls.first,
+                                    fit: BoxFit.cover,
+                                    errorWidget: (ctx, url, err) => _splusFallbackImage(listing),
+                                  )
+                                else
+                                  _splusFallbackImage(listing),
+                                // S+ Badge
+                                Positioned(
+                                  top: 10,
+                                  left: 10,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.gold,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      'S+',
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.bg,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        // Info
+                        Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                listing.title,
+                                style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                listing.priceFormatted,
+                                style: GoogleFonts.dmSans(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.gold),
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Icon(LucideIcons.shield, size: 12, color: AppColors.gold.withValues(alpha: 0.7)),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '300-Point Inspection \u2022 2-Year Warranty',
+                                    style: GoogleFonts.dmSans(fontSize: 10, color: AppColors.textSecondary),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  const Icon(LucideIcons.mapPin, size: 12, color: AppColors.textMuted),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    listing.locationCity ?? 'India',
+                                    style: GoogleFonts.dmSans(fontSize: 11, color: AppColors.textMuted),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ).animate().fadeIn(
+                    delay: Duration(milliseconds: index * 100),
+                    duration: const Duration(milliseconds: 500),
+                  ).slideX(begin: 0.1, end: 0, delay: Duration(milliseconds: index * 100));
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // GUARANTEED S+ NEW CARS (always shows — mock fallback)
+  // ─────────────────────────────────────────────────────────
+  Widget _buildGuaranteedSplusNewSection(
+    AsyncValue<List<Listing>> splusNewAsync,
+    double screenWidth,
+    double screenPadding,
+    BuildContext context,
+    WidgetRef ref,
+  ) {
+    final providerData = splusNewAsync.valueOrNull;
+    final listings = (providerData != null && providerData.isNotEmpty)
+        ? providerData
+        : MockCarService.mockListings
+            .where((l) => l.isNewCar)
+            .toList();
+    if (listings.isEmpty) return const SizedBox.shrink();
+
+    final serverBaseUrl = ref.watch(serverBaseUrlProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(top: 24, left: screenPadding, right: screenPadding),
+          child: SectionHeader(
+            title: 'S+ New Cars',
+            actionText: 'View All',
+            onAction: () => context.go('/search'),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 290,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: EdgeInsets.only(left: screenPadding),
+            itemCount: listings.length,
+            itemBuilder: (context, index) {
+              final listing = listings[index];
+              final imageUrls = listing.imageUrls(serverBaseUrl);
+              return Padding(
+                padding: EdgeInsets.only(right: index < listings.length - 1 ? 16 : screenPadding),
+                child: GestureDetector(
+                  onTap: () => context.push('/car/${listing.id}'),
+                  child: Container(
+                    width: 280,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          AppColors.success.withValues(alpha: 0.06),
+                          const Color(0xFF0F1A1A),
+                          AppColors.bgCard,
+                        ],
+                      ),
+                      border: Border.all(color: AppColors.success.withValues(alpha: 0.15)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Image
+                        ClipRRect(
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                          child: SizedBox(
+                            height: 140,
+                            width: 280,
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                if (imageUrls.isNotEmpty)
+                                  CachedNetworkImage(
+                                    imageUrl: imageUrls.first,
+                                    fit: BoxFit.cover,
+                                    errorWidget: (ctx, url, err) => _splusFallbackImage(listing),
+                                  )
+                                else
+                                  _splusFallbackImage(listing),
+                                // Car type badge
+                                Positioned(
+                                  top: 10,
+                                  left: 10,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.success.withValues(alpha: 0.9),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      listing.newCarType ?? 'New',
+                                      style: GoogleFonts.dmSans(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.bg),
+                                    ),
+                                  ),
+                                ),
+                                // NEW badge
+                                Positioned(
+                                  top: 10,
+                                  right: 10,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(color: AppColors.success),
+                                      borderRadius: BorderRadius.circular(8),
+                                      color: AppColors.bg.withValues(alpha: 0.7),
+                                    ),
+                                    child: Text(
+                                      'NEW',
+                                      style: GoogleFonts.dmSans(fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.success),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        // Info
+                        Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                listing.title,
+                                style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                listing.priceFormatted,
+                                style: GoogleFonts.dmSans(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.gold),
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Icon(LucideIcons.checkCircle, size: 12, color: AppColors.success.withValues(alpha: 0.7)),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Factory Fresh \u2022 Full Warranty \u2022 0 km',
+                                    style: GoogleFonts.dmSans(fontSize: 10, color: AppColors.textSecondary),
+                                  ),
+                                ],
+                              ),
+                              if (listing.engineType != null) ...[
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    const Icon(LucideIcons.gauge, size: 12, color: AppColors.textMuted),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        '${listing.engineType} \u2022 ${listing.powerBhp?.round() ?? ''}bhp \u2022 ${listing.transmissionType ?? ''}',
+                                        style: GoogleFonts.dmSans(fontSize: 10, color: AppColors.textMuted),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ).animate().fadeIn(
+                    delay: Duration(milliseconds: index * 100),
+                    duration: const Duration(milliseconds: 500),
+                  ).slideX(begin: 0.1, end: 0, delay: Duration(milliseconds: index * 100));
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _splusFallbackImage(Listing listing) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [AppColors.bgCardHover, AppColors.bgCard],
+        ),
+      ),
+      child: Center(
+        child: Text(
+          listing.brandInitial,
+          style: GoogleFonts.dmSans(
+            fontSize: 48,
+            fontWeight: FontWeight.w800,
+            color: Colors.white.withValues(alpha: 0.08),
+          ),
         ),
       ),
     );
