@@ -46,6 +46,7 @@ class Listing {
   final bool featuredListing;
   final bool isSplus;
   final bool isNewCar;
+  final String? newCarType;
   final int viewsCount;
   final int favoritesCount;
   final int leadCount;
@@ -106,6 +107,7 @@ class Listing {
     this.featuredListing = false,
     this.isSplus = false,
     this.isNewCar = false,
+    this.newCarType,
     this.viewsCount = 0,
     this.favoritesCount = 0,
     this.leadCount = 0,
@@ -258,6 +260,7 @@ class Listing {
           json['featured_listing'] == 1 || json['featured_listing'] == true,
       isSplus: json['is_splus'] == 1 || json['is_splus'] == true,
       isNewCar: json['is_new_car'] == 1 || json['is_new_car'] == true,
+      newCarType: json['new_car_type'] as String?,
       viewsCount: json['views_count'] as int? ?? 0,
       favoritesCount: json['favorites_count'] as int? ?? 0,
       leadCount: json['lead_count'] as int? ?? 0,
@@ -323,6 +326,7 @@ class Listing {
       'featured_listing': featuredListing ? 1 : 0,
       'is_splus': isSplus ? 1 : 0,
       'is_new_car': isNewCar ? 1 : 0,
+      'new_car_type': newCarType,
       'views_count': viewsCount,
       'favorites_count': favoritesCount,
       'lead_count': leadCount,

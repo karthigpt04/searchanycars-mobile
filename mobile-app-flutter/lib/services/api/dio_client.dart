@@ -26,11 +26,12 @@ class DioClient {
           storage: FileStorage('${appDocDir.path}/.cookies/'),
         );
       } catch (_) {
-        // Fallback to in-memory cookie jar if file storage fails
-        _cookieJar = PersistCookieJar();
+        // path_provider not available (web) — skip cookie persistence
       }
     }
-    _instance!.interceptors.add(CookieManager(_cookieJar!));
+    if (_cookieJar != null) {
+      _instance!.interceptors.add(CookieManager(_cookieJar!));
+    }
 
     // Add logging interceptor in debug mode
     assert(() {

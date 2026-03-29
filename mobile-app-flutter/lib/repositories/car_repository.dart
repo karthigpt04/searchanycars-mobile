@@ -116,6 +116,18 @@ final allListingsProvider = FutureProvider<List<Listing>>((ref) async {
   return repo.getListings();
 });
 
+/// S-Plus premium pre-owned listings — derived from allListingsProvider
+final splusListingsProvider = FutureProvider<List<Listing>>((ref) async {
+  final allListings = await ref.watch(allListingsProvider.future);
+  return allListings.where((l) => l.isSplus && !l.isNewCar).toList();
+});
+
+/// S-Plus New — brand new / unregistered / demo cars — derived from allListingsProvider
+final splusNewListingsProvider = FutureProvider<List<Listing>>((ref) async {
+  final allListings = await ref.watch(allListingsProvider.future);
+  return allListings.where((l) => l.isNewCar).toList();
+});
+
 /// Server base URL for building image URLs
 final serverBaseUrlProvider = Provider<String>((ref) {
   final connectivity = ref.watch(connectivityProvider);

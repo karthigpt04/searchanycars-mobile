@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../constants/colors.dart';
 import '../models/brand.dart';
 import '../models/listing.dart';
@@ -11,6 +12,7 @@ import '../models/mock_data.dart';
 import '../providers/auth_provider.dart';
 import '../providers/config_provider.dart';
 import '../repositories/car_repository.dart';
+import '../services/mock/mock_car_service.dart';
 import '../utils/listing_helpers.dart';
 import '../widgets/car/car_card.dart';
 import '../widgets/car/car_list_item.dart';
@@ -95,6 +97,8 @@ class HomeScreen extends ConsumerWidget {
     final featuredAsync = ref.watch(featuredListingsProvider);
     final recentAsync = ref.watch(recentListingsProvider);
     final allListingsAsync = ref.watch(allListingsProvider);
+    final splusAsync = ref.watch(splusListingsProvider);
+    final splusNewAsync = ref.watch(splusNewListingsProvider);
     final screenWidth = MediaQuery.of(context).size.width;
     final screenPadding = screenWidth * 0.055;
     final topPadding = MediaQuery.of(context).padding.top + 12;
@@ -125,6 +129,8 @@ class HomeScreen extends ConsumerWidget {
           ref.invalidate(featuredListingsProvider);
           ref.invalidate(recentListingsProvider);
           ref.invalidate(allListingsProvider);
+          ref.invalidate(splusListingsProvider);
+          ref.invalidate(splusNewListingsProvider);
           ref.invalidate(siteConfigProvider);
         },
         child: SingleChildScrollView(
@@ -380,6 +386,12 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
               _buildFeaturedSection(featuredAsync, screenWidth, screenPadding, context),
+
+              // ===== S+ PREMIUM SECTION =====
+              _buildSplusSection(splusAsync, screenWidth, screenPadding, context, ref),
+
+              // ===== S+ NEW CARS SECTION =====
+              _buildSplusNewSection(splusNewAsync, screenWidth, screenPadding, context, ref),
 
               // ===== 7. RECENTLY ADDED =====
               Padding(
@@ -784,6 +796,917 @@ class HomeScreen extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // S+ PREMIUM SECTION
+  // ─────────────────────────────────────────────────────────
+  Widget _buildSplusSection(
+    AsyncValue<List<Listing>> splusAsync,
+    double screenWidth,
+    double screenPadding,
+    BuildContext context,
+    WidgetRef ref,
+  ) {
+    return splusAsync.when(
+      data: (listings) {
+        if (listings.isEmpty) return const SizedBox.shrink();
+        final serverBaseUrl = ref.watch(serverBaseUrlProvider);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: EdgeInsets.only(
+                top: 24,
+                left: screenPadding,
+                right: screenPadding,
+              ),
+              child: SectionHeader(
+                title: 'S+ Premium',
+                actionText: 'Explore',
+                onAction: () => context.go('/search'),
+              ),
+            ),
+            SizedBox(
+              height: 260,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: EdgeInsets.only(left: screenPadding),
+                itemCount: listings.length,
+                itemBuilder: (context, index) {
+                  final listing = listings[index];
+                  final imageUrls = listing.imageUrls(serverBaseUrl);
+                  return Padding(
+                    padding: EdgeInsets.only(
+                      right: index < listings.length - 1 ? 16 : screenPadding,
+                    ),
+                    child: GestureDetector(
+                      onTap: () => context.push('/car/${listing.id}'),
+                      child: Container(
+                        width: 260,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              AppColors.gold.withValues(alpha: 0.08),
+                              const Color(0xFF1A1428),
+                              const Color(0xFF141420),
+                            ],
+                          ),
+                          border: Border.all(
+                            color: AppColors.gold.withValues(alpha: 0.2),
+                            width: 1,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.gold.withValues(alpha: 0.08),
+                              blurRadius: 20,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Image area with S+ badge
+                            ClipRRect(
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(20),
+                                topRight: Radius.circular(20),
+                              ),
+                              child: SizedBox(
+                                height: 130,
+                                width: double.infinity,
+                                child: Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    if (imageUrls.isNotEmpty)
+                                      CachedNetworkImage(
+                                        imageUrl: imageUrls.first,
+                                        fit: BoxFit.cover,
+                                        placeholder: (context, url) => Container(
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                              colors: [
+                                                AppColors.gold.withValues(alpha: 0.15),
+                                                AppColors.bgCard,
+                                              ],
+                                            ),
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              listing.brandInitial,
+                                              style: GoogleFonts.dmSans(
+                                                fontSize: 32,
+                                                fontWeight: FontWeight.w800,
+                                                color: AppColors.gold.withValues(alpha: 0.4),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        errorWidget: (context, url, error) => Container(
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                              colors: [
+                                                AppColors.gold.withValues(alpha: 0.15),
+                                                AppColors.bgCard,
+                                              ],
+                                            ),
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              listing.brandInitial,
+                                              style: GoogleFonts.dmSans(
+                                                fontSize: 32,
+                                                fontWeight: FontWeight.w800,
+                                                color: AppColors.gold.withValues(alpha: 0.4),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                    else
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                            colors: [
+                                              AppColors.gold.withValues(alpha: 0.15),
+                                              AppColors.bgCard,
+                                            ],
+                                          ),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            listing.brandInitial,
+                                            style: GoogleFonts.dmSans(
+                                              fontSize: 32,
+                                              fontWeight: FontWeight.w800,
+                                              color: AppColors.gold.withValues(alpha: 0.4),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    // Gradient overlay at bottom of image
+                                    Positioned(
+                                      bottom: 0,
+                                      left: 0,
+                                      right: 0,
+                                      height: 40,
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            begin: Alignment.topCenter,
+                                            end: Alignment.bottomCenter,
+                                            colors: [
+                                              Colors.transparent,
+                                              const Color(0xFF141420).withValues(alpha: 0.9),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    // S+ badge
+                                    Positioned(
+                                      top: 10,
+                                      left: 10,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          gradient: const LinearGradient(
+                                            colors: [AppColors.gold, AppColors.goldLight],
+                                          ),
+                                          borderRadius: BorderRadius.circular(8),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: AppColors.gold.withValues(alpha: 0.3),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Text(
+                                          'S+',
+                                          style: GoogleFonts.dmSans(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w800,
+                                            color: AppColors.bg,
+                                            letterSpacing: 0.5,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            // Content
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    // Title
+                                    Text(
+                                      listing.title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                    // Price
+                                    Text(
+                                      listing.priceFormatted,
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.gold,
+                                      ),
+                                    ),
+                                    // Tags
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          LucideIcons.shield,
+                                          size: 11,
+                                          color: AppColors.gold.withValues(alpha: 0.7),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: Text(
+                                            '300-Point Inspection  \u2022  2-Year Warranty',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: GoogleFonts.dmSans(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w500,
+                                              color: AppColors.gold.withValues(alpha: 0.6),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    // Location
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          LucideIcons.mapPin,
+                                          size: 11,
+                                          color: AppColors.textMuted,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          listing.locationCity ?? 'N/A',
+                                          style: GoogleFonts.dmSans(
+                                            fontSize: 11,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  )
+                      .animate()
+                      .fadeIn(
+                        delay: Duration(milliseconds: index * 100),
+                        duration: const Duration(milliseconds: 500),
+                      )
+                      .slideX(
+                        begin: 0.15,
+                        end: 0,
+                        delay: Duration(milliseconds: index * 100),
+                        duration: const Duration(milliseconds: 500),
+                        curve: Curves.easeOut,
+                      );
+                },
+              ),
+            ),
+          ],
+        );
+      },
+      loading: () => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.only(
+              top: 24,
+              left: screenPadding,
+              right: screenPadding,
+            ),
+            child: SectionHeader(
+              title: 'S+ Premium',
+              actionText: 'Explore',
+              onAction: () => context.go('/search'),
+            ),
+          ),
+          SizedBox(
+            height: 260,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: EdgeInsets.only(left: screenPadding),
+              itemCount: 2,
+              itemBuilder: (context, index) => Padding(
+                padding: EdgeInsets.only(
+                  right: index < 1 ? 16 : screenPadding,
+                ),
+                child: const SkeletonLoader(
+                  width: 260,
+                  height: 250,
+                  borderRadius: 20,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+      error: (e, s) {
+        // Fallback: show mock S+ data on error
+        final mockSplus = MockCarService.mockListings
+            .where((l) => l.isSplus && !l.isNewCar)
+            .toList();
+        if (mockSplus.isEmpty) return const SizedBox.shrink();
+        final serverBaseUrl = ref.watch(serverBaseUrlProvider);
+        return _buildSplusCards(mockSplus, serverBaseUrl, screenWidth, screenPadding, context);
+      },
+    );
+  }
+
+  Widget _buildSplusCards(List<Listing> listings, String serverBaseUrl, double screenWidth, double screenPadding, BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(top: 24, left: screenPadding, right: screenPadding),
+          child: SectionHeader(title: 'S+ Premium', actionText: 'Explore', onAction: () => context.go('/search')),
+        ),
+        SizedBox(
+          height: 260,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: EdgeInsets.only(left: screenPadding),
+            itemCount: listings.length,
+            itemBuilder: (context, index) {
+              final listing = listings[index];
+              final imageUrls = listing.imageUrls(serverBaseUrl);
+              return Padding(
+                padding: EdgeInsets.only(right: index < listings.length - 1 ? 16 : screenPadding),
+                child: GestureDetector(
+                  onTap: () => context.push('/car/${listing.id}'),
+                  child: Container(
+                    width: 260,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [AppColors.gold.withValues(alpha: 0.08), const Color(0xFF1A1428), const Color(0xFF141420)]),
+                      border: Border.all(color: AppColors.gold.withValues(alpha: 0.2), width: 1),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Image area
+                        ClipRRect(
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                          child: SizedBox(
+                            height: 130,
+                            width: 260,
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                if (imageUrls.isNotEmpty)
+                                  CachedNetworkImage(imageUrl: imageUrls.first, fit: BoxFit.cover, errorWidget: (c, u, e) => _brandInitialFallback(listing))
+                                else
+                                  _brandInitialFallback(listing),
+                                Positioned(top: 10, left: 10, child: Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: AppColors.gold, borderRadius: BorderRadius.circular(8)), child: Text('S+', style: GoogleFonts.dmSans(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.bg)))),
+                              ],
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Text(listing.title, style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                            const SizedBox(height: 6),
+                            Text(listing.priceFormatted, style: GoogleFonts.dmSans(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.gold)),
+                            const SizedBox(height: 8),
+                            Row(children: [Icon(LucideIcons.shield, size: 12, color: AppColors.gold.withValues(alpha: 0.7)), const SizedBox(width: 4), Text('300-Point Inspection \u2022 2-Year Warranty', style: GoogleFonts.dmSans(fontSize: 10, color: AppColors.textSecondary))]),
+                            const SizedBox(height: 4),
+                            Row(children: [Icon(LucideIcons.mapPin, size: 12, color: AppColors.textMuted), const SizedBox(width: 4), Text(listing.locationCity ?? 'India', style: GoogleFonts.dmSans(fontSize: 11, color: AppColors.textMuted))]),
+                          ]),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _brandInitialFallback(Listing listing) {
+    return Container(
+      decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [AppColors.bgCardHover, AppColors.bgCard])),
+      child: Center(child: Text(listing.brandInitial, style: GoogleFonts.dmSans(fontSize: 48, fontWeight: FontWeight.w800, color: Colors.white.withValues(alpha: 0.08)))),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // S+ NEW CARS SECTION
+  // ─────────────────────────────────────────────────────────
+  Widget _buildSplusNewSection(
+    AsyncValue<List<Listing>> splusNewAsync,
+    double screenWidth,
+    double screenPadding,
+    BuildContext context,
+    WidgetRef ref,
+  ) {
+    return splusNewAsync.when(
+      data: (listings) {
+        if (listings.isEmpty) return const SizedBox.shrink();
+        final serverBaseUrl = ref.watch(serverBaseUrlProvider);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: EdgeInsets.only(
+                top: 24,
+                left: screenPadding,
+                right: screenPadding,
+              ),
+              child: SectionHeader(
+                title: 'S+ New Cars',
+                actionText: 'View All',
+                onAction: () => context.go('/search'),
+              ),
+            ),
+            SizedBox(
+              height: 290,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: EdgeInsets.only(left: screenPadding),
+                itemCount: listings.length,
+                itemBuilder: (context, index) {
+                  final listing = listings[index];
+                  final imageUrls = listing.imageUrls(serverBaseUrl);
+                  final carType = listing.newCarType ?? 'New';
+                  // Build engine spec string
+                  final specParts = <String>[];
+                  if (listing.engineType != null && listing.engineType!.isNotEmpty) {
+                    specParts.add(listing.engineType!);
+                  }
+                  if (listing.powerBhp != null) {
+                    specParts.add('${listing.powerBhp!.round()} bhp');
+                  }
+                  if (listing.transmissionType != null) {
+                    specParts.add(listing.transmissionType!);
+                  }
+                  final engineSpec = specParts.join(' \u2022 ');
+
+                  return Padding(
+                    padding: EdgeInsets.only(
+                      right: index < listings.length - 1 ? 16 : screenPadding,
+                    ),
+                    child: GestureDetector(
+                      onTap: () => context.push('/car/${listing.id}'),
+                      child: Container(
+                        width: 280,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              AppColors.success.withValues(alpha: 0.06),
+                              const Color(0xFF0F1A1A),
+                              const Color(0xFF141420),
+                            ],
+                          ),
+                          border: Border.all(
+                            color: AppColors.success.withValues(alpha: 0.15),
+                            width: 1,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.success.withValues(alpha: 0.06),
+                              blurRadius: 20,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Image area with badges
+                            ClipRRect(
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(20),
+                                topRight: Radius.circular(20),
+                              ),
+                              child: SizedBox(
+                                height: 140,
+                                width: double.infinity,
+                                child: Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    if (imageUrls.isNotEmpty)
+                                      CachedNetworkImage(
+                                        imageUrl: imageUrls.first,
+                                        fit: BoxFit.cover,
+                                        placeholder: (context, url) => Container(
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                              colors: [
+                                                AppColors.success.withValues(alpha: 0.1),
+                                                AppColors.bgCard,
+                                              ],
+                                            ),
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              listing.brandInitial,
+                                              style: GoogleFonts.dmSans(
+                                                fontSize: 32,
+                                                fontWeight: FontWeight.w800,
+                                                color: AppColors.success.withValues(alpha: 0.4),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        errorWidget: (context, url, error) => Container(
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                              colors: [
+                                                AppColors.success.withValues(alpha: 0.1),
+                                                AppColors.bgCard,
+                                              ],
+                                            ),
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              listing.brandInitial,
+                                              style: GoogleFonts.dmSans(
+                                                fontSize: 32,
+                                                fontWeight: FontWeight.w800,
+                                                color: AppColors.success.withValues(alpha: 0.4),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                    else
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                            colors: [
+                                              AppColors.success.withValues(alpha: 0.1),
+                                              AppColors.bgCard,
+                                            ],
+                                          ),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            listing.brandInitial,
+                                            style: GoogleFonts.dmSans(
+                                              fontSize: 32,
+                                              fontWeight: FontWeight.w800,
+                                              color: AppColors.success.withValues(alpha: 0.4),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    // Gradient overlay at bottom of image
+                                    Positioned(
+                                      bottom: 0,
+                                      left: 0,
+                                      right: 0,
+                                      height: 40,
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            begin: Alignment.topCenter,
+                                            end: Alignment.bottomCenter,
+                                            colors: [
+                                              Colors.transparent,
+                                              const Color(0xFF141420).withValues(alpha: 0.9),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    // Car type badge (top-left)
+                                    Positioned(
+                                      top: 10,
+                                      left: 10,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.success.withValues(alpha: 0.9),
+                                          borderRadius: BorderRadius.circular(8),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: AppColors.success.withValues(alpha: 0.3),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Text(
+                                          carType,
+                                          style: GoogleFonts.dmSans(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.bg,
+                                            letterSpacing: 0.5,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    // NEW badge (top-right)
+                                    Positioned(
+                                      top: 10,
+                                      right: 10,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.bg.withValues(alpha: 0.7),
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(
+                                            color: AppColors.success.withValues(alpha: 0.4),
+                                            width: 1,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'NEW',
+                                          style: GoogleFonts.dmSans(
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.w800,
+                                            color: AppColors.success,
+                                            letterSpacing: 1,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            // Content
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    // Title
+                                    Text(
+                                      listing.title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                    // Price
+                                    Text(
+                                      listing.priceFormatted,
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.gold,
+                                      ),
+                                    ),
+                                    // Tags
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          LucideIcons.checkCircle,
+                                          size: 11,
+                                          color: AppColors.success.withValues(alpha: 0.7),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: Text(
+                                            'Factory Fresh  \u2022  Full Warranty  \u2022  0 km',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: GoogleFonts.dmSans(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w500,
+                                              color: AppColors.success.withValues(alpha: 0.6),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    // Engine specs
+                                    if (engineSpec.isNotEmpty)
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            LucideIcons.gauge,
+                                            size: 11,
+                                            color: AppColors.textMuted,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Expanded(
+                                            child: Text(
+                                              engineSpec,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: GoogleFonts.dmSans(
+                                                fontSize: 11,
+                                                color: AppColors.textSecondary,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      )
+                                    else
+                                      const SizedBox.shrink(),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  )
+                      .animate()
+                      .fadeIn(
+                        delay: Duration(milliseconds: index * 100),
+                        duration: const Duration(milliseconds: 500),
+                      )
+                      .slideX(
+                        begin: 0.15,
+                        end: 0,
+                        delay: Duration(milliseconds: index * 100),
+                        duration: const Duration(milliseconds: 500),
+                        curve: Curves.easeOut,
+                      );
+                },
+              ),
+            ),
+          ],
+        );
+      },
+      loading: () => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.only(
+              top: 24,
+              left: screenPadding,
+              right: screenPadding,
+            ),
+            child: SectionHeader(
+              title: 'S+ New Cars',
+              actionText: 'View All',
+              onAction: () => context.go('/search'),
+            ),
+          ),
+          SizedBox(
+            height: 290,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: EdgeInsets.only(left: screenPadding),
+              itemCount: 2,
+              itemBuilder: (context, index) => Padding(
+                padding: EdgeInsets.only(
+                  right: index < 1 ? 16 : screenPadding,
+                ),
+                child: const SkeletonLoader(
+                  width: 280,
+                  height: 280,
+                  borderRadius: 20,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+      error: (e, s) {
+        // Fallback: show mock new car data on error
+        final mockNew = MockCarService.mockListings
+            .where((l) => l.isNewCar)
+            .toList();
+        if (mockNew.isEmpty) return const SizedBox.shrink();
+        final serverBaseUrl = ref.watch(serverBaseUrlProvider);
+        return _buildSplusNewCards(mockNew, serverBaseUrl, screenWidth, screenPadding, context);
+      },
+    );
+  }
+
+  Widget _buildSplusNewCards(List<Listing> listings, String serverBaseUrl, double screenWidth, double screenPadding, BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(top: 24, left: screenPadding, right: screenPadding),
+          child: SectionHeader(title: 'S+ New Cars', actionText: 'View All', onAction: () => context.go('/search')),
+        ),
+        SizedBox(
+          height: 290,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: EdgeInsets.only(left: screenPadding),
+            itemCount: listings.length,
+            itemBuilder: (context, index) {
+              final listing = listings[index];
+              final imageUrls = listing.imageUrls(serverBaseUrl);
+              return Padding(
+                padding: EdgeInsets.only(right: index < listings.length - 1 ? 16 : screenPadding),
+                child: GestureDetector(
+                  onTap: () => context.push('/car/${listing.id}'),
+                  child: Container(
+                    width: 280,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [AppColors.success.withValues(alpha: 0.06), const Color(0xFF0F1A1A), const Color(0xFF141420)]),
+                      border: Border.all(color: AppColors.success.withValues(alpha: 0.15), width: 1),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ClipRRect(
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                          child: SizedBox(
+                            height: 140,
+                            width: 280,
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                if (imageUrls.isNotEmpty)
+                                  CachedNetworkImage(imageUrl: imageUrls.first, fit: BoxFit.cover, errorWidget: (c, u, e) => _brandInitialFallback(listing))
+                                else
+                                  _brandInitialFallback(listing),
+                                Positioned(top: 10, left: 10, child: Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: AppColors.success.withValues(alpha: 0.9), borderRadius: BorderRadius.circular(8)), child: Text(listing.newCarType ?? 'New', style: GoogleFonts.dmSans(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.bg)))),
+                                Positioned(top: 10, right: 10, child: Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(border: Border.all(color: AppColors.success, width: 1), borderRadius: BorderRadius.circular(8)), child: Text('NEW', style: GoogleFonts.dmSans(fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.success)))),
+                              ],
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Text(listing.title, style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                            const SizedBox(height: 6),
+                            Text(listing.priceFormatted, style: GoogleFonts.dmSans(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.gold)),
+                            const SizedBox(height: 8),
+                            Row(children: [Icon(LucideIcons.checkCircle, size: 12, color: AppColors.success.withValues(alpha: 0.7)), const SizedBox(width: 4), Text('Factory Fresh \u2022 Full Warranty \u2022 0 km', style: GoogleFonts.dmSans(fontSize: 10, color: AppColors.textSecondary))]),
+                            const SizedBox(height: 4),
+                            if (listing.engineType != null)
+                              Row(children: [Icon(LucideIcons.gauge, size: 12, color: AppColors.textMuted), const SizedBox(width: 4), Expanded(child: Text('${listing.engineType} \u2022 ${listing.powerBhp?.round() ?? ''}bhp \u2022 ${listing.transmissionType ?? ''}', style: GoogleFonts.dmSans(fontSize: 10, color: AppColors.textMuted), maxLines: 1, overflow: TextOverflow.ellipsis))]),
+                          ]),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 

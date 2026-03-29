@@ -115,16 +115,22 @@ class ConnectivityNotifier extends StateNotifier<ConnectivityState> {
       status: ConnectivityStatus.reconnecting,
     );
 
-    await DioClient.initialize(normalized);
-    final healthy = await DioClient.checkHealth();
+    try {
+      await DioClient.initialize(normalized);
+      final healthy = await DioClient.checkHealth();
 
-    if (healthy) {
-      await CacheManager.saveServerUrl(normalized);
-      state = state.copyWith(status: ConnectivityStatus.connected);
-      _stopReconnectTimer();
-      return true;
-    } else {
+      if (healthy) {
+        await CacheManager.saveServerUrl(normalized);
+        state = state.copyWith(status: ConnectivityStatus.connected);
+        _stopReconnectTimer();
+        return true;
+      } else {
+        state = state.copyWith(status: ConnectivityStatus.disconnected);
+        return false;
+      }
+    } catch (_) {
       state = state.copyWith(status: ConnectivityStatus.disconnected);
+      _startReconnectTimer();
       return false;
     }
   }
