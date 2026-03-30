@@ -8,7 +8,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import '../constants/colors.dart';
 import '../models/test_drive_booking.dart';
+import '../providers/auth_provider.dart';
 import '../repositories/car_repository.dart';
+import '../services/api/api_booking_service.dart';
+import '../services/api/dio_client.dart';
 import '../utils/cache_manager.dart';
 
 class BookTestDriveScreen extends ConsumerStatefulWidget {
@@ -187,7 +190,26 @@ class _BookTestDriveScreenState extends ConsumerState<BookTestDriveScreen> {
       createdAt: DateTime.now().toIso8601String(),
     );
 
+    // Save locally always (offline fallback)
     await CacheManager.saveBooking(booking.toJson());
+
+    // If authenticated, also send to backend API
+    final auth = ref.read(authProvider);
+    if (auth.isAuthenticated && DioClient.isInitialized) {
+      try {
+        await ApiBookingService().createBooking(
+          listingId: widget.carId,
+          carTitle: carTitle,
+          name: booking.name,
+          phone: booking.phone,
+          preferredDate: booking.preferredDate,
+          preferredTime: booking.preferredTime,
+          notes: booking.notes,
+        );
+      } catch (_) {
+        // API failed — local booking is still saved
+      }
+    }
 
     if (mounted) {
       setState(() {

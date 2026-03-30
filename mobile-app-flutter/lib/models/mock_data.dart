@@ -196,12 +196,9 @@ class MockData {
   static const List<String> filterChips = ['All', 'SUV', 'Sedan', 'Hatchback', 'Luxury', 'EV'];
 
   static const List<Map<String, dynamic>> profileMenuItems = [
-    {'icon': 'car', 'label': 'My Bookings', 'count': 2},
-    {'icon': 'heart', 'label': 'Saved Cars', 'count': 5},
-    {'icon': 'compare', 'label': 'Compare History', 'count': 0},
-    {'icon': 'shield', 'label': 'Insurance & Warranty', 'count': 0},
-    {'icon': 'phone', 'label': 'Support Center', 'count': 0},
-    {'icon': 'bell', 'label': 'Notifications', 'count': 3},
+    {'icon': 'car', 'label': 'My Bookings', 'count': 2, 'route': '/bookings'},
+    {'icon': 'compare', 'label': 'Compare History', 'count': 0, 'route': '/compare'},
+    {'icon': 'phone', 'label': 'Support Center', 'count': 0, 'route': '/support'},
   ];
 
   static const List<Map<String, String>> trustItems = [

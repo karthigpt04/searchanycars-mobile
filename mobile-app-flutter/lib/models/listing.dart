@@ -195,8 +195,17 @@ class Listing {
     return '';
   }
 
+  /// Build full image URLs. If a path is already absolute (http/https), use it as-is.
+  /// If it's a relative path (e.g., /uploads/...), prepend the server base URL.
+  static String _resolveImageUrl(String path, String serverBaseUrl) {
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return path;
+    }
+    return '$serverBaseUrl$path';
+  }
+
   List<String> imageUrls(String serverBaseUrl) {
-    return images.map((path) => '$serverBaseUrl$path').toList();
+    return images.map((path) => _resolveImageUrl(path, serverBaseUrl)).toList();
   }
 
   List<String> allImageUrls(String serverBaseUrl) {
@@ -206,7 +215,7 @@ class Listing {
     all.addAll(exteriorImages);
     all.addAll(engineImages);
     all.addAll(tireImages);
-    return all.map((path) => '$serverBaseUrl$path').toList();
+    return all.map((path) => _resolveImageUrl(path, serverBaseUrl)).toList();
   }
 
   factory Listing.fromJson(Map<String, dynamic> json) {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../constants/colors.dart';
 import '../../models/car.dart';
 import '../../providers/app_provider.dart';
@@ -18,6 +19,31 @@ class CarListItem extends ConsumerWidget {
     this.onWishlistTap,
     this.isWishlisted,
   });
+
+  Widget _brandInitialFallback(Color carColor) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            carColor.withValues(alpha: 0.3),
+            AppColors.bgCard,
+          ],
+        ),
+      ),
+      child: Center(
+        child: Text(
+          car.brand.isNotEmpty ? car.brand[0] : '?',
+          style: GoogleFonts.dmSans(
+            fontSize: 36,
+            fontWeight: FontWeight.w800,
+            color: carColor.withValues(alpha: 0.25),
+          ),
+        ),
+      ),
+    );
+  }
 
   Color _parseHex(String hex) {
     hex = hex.replaceFirst('#', '');
@@ -43,29 +69,19 @@ class CarListItem extends ConsumerWidget {
         child: Row(
           children: [
             // Thumbnail
-            Container(
-              width: 110,
-              height: 85,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    carColor.withValues(alpha:0.3),
-                    AppColors.bgCard,
-                  ],
-                ),
-              ),
-              child: Center(
-                child: Text(
-                  car.brand[0],
-                  style: GoogleFonts.dmSans(
-                    fontSize: 36,
-                    fontWeight: FontWeight.w800,
-                    color: carColor.withValues(alpha:0.25),
-                  ),
-                ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: SizedBox(
+                width: 110,
+                height: 85,
+                child: car.imageUrl != null && car.imageUrl!.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: car.imageUrl!,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => _brandInitialFallback(carColor),
+                        errorWidget: (context, url, error) => _brandInitialFallback(carColor),
+                      )
+                    : _brandInitialFallback(carColor),
               ),
             ),
             const SizedBox(width: 14),

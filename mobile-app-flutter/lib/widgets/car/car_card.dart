@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../constants/colors.dart';
 import '../../models/car.dart';
 import '../../providers/app_provider.dart';
@@ -45,6 +46,31 @@ class _CarCardState extends ConsumerState<CarCard>
     super.dispose();
   }
 
+  Widget _buildImageFallback(Color carColor) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            carColor.withValues(alpha: 0.3),
+            AppColors.bgCard,
+          ],
+        ),
+      ),
+      child: Center(
+        child: Text(
+          widget.car.brand.isNotEmpty ? widget.car.brand[0] : '?',
+          style: GoogleFonts.dmSans(
+            fontSize: 56,
+            fontWeight: FontWeight.w800,
+            color: carColor.withValues(alpha: 0.2),
+          ),
+        ),
+      ),
+    );
+  }
+
   Color _parseHex(String hex) {
     hex = hex.replaceFirst('#', '');
     return Color(int.parse('FF$hex', radix: 16));
@@ -82,32 +108,22 @@ class _CarCardState extends ConsumerState<CarCard>
                 height: 130,
                 child: Stack(
                   children: [
-                    // Gradient background
-                    Container(
-                      width: double.infinity,
-                      height: 130,
-                      decoration: BoxDecoration(
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(20),
-                        ),
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            carColor.withValues(alpha:0.3),
-                            AppColors.bgCard,
-                          ],
-                        ),
+                    // Car image or gradient fallback
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(20),
                       ),
-                      child: Center(
-                        child: Text(
-                          widget.car.brand[0],
-                          style: GoogleFonts.dmSans(
-                            fontSize: 56,
-                            fontWeight: FontWeight.w800,
-                            color: carColor.withValues(alpha:0.2),
-                          ),
-                        ),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 130,
+                        child: widget.car.imageUrl != null && widget.car.imageUrl!.isNotEmpty
+                            ? CachedNetworkImage(
+                                imageUrl: widget.car.imageUrl!,
+                                fit: BoxFit.cover,
+                                placeholder: (context, url) => _buildImageFallback(carColor),
+                                errorWidget: (context, url, error) => _buildImageFallback(carColor),
+                              )
+                            : _buildImageFallback(carColor),
                       ),
                     ),
                     // Badge

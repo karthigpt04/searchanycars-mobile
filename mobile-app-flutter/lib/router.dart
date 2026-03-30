@@ -6,9 +6,12 @@ import 'screens/home_screen.dart';
 import 'screens/search_screen.dart';
 import 'screens/compare_screen.dart';
 import 'screens/wishlist_screen.dart';
+import 'screens/splus_screen.dart';
+import 'screens/splus_new_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/car_detail_screen.dart';
 import 'screens/main_shell.dart';
+import 'screens/my_bookings_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
@@ -61,8 +64,16 @@ final router = GoRouter(
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: '/wishlist',
-              builder: (context, state) => const WishlistScreen(),
+              path: '/splus',
+              builder: (context, state) => const SplusScreen(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/splus-new',
+              builder: (context, state) => const SplusNewScreen(),
             ),
           ],
         ),
@@ -75,6 +86,16 @@ final router = GoRouter(
           ],
         ),
       ],
+    ),
+    GoRoute(
+      path: '/wishlist',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const WishlistScreen(),
+    ),
+    GoRoute(
+      path: '/my-bookings',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const MyBookingsScreen(),
     ),
     GoRoute(
       path: '/car/:id',

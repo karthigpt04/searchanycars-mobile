@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/auth_state.dart';
 import '../services/api/api_auth_service.dart';
 import '../services/api/dio_client.dart';
+import 'app_provider.dart';
 import 'connectivity_provider.dart';
 
 /// Manages authentication state (guest vs authenticated).
@@ -33,6 +34,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final user = await ApiAuthService().getCurrentUser();
       if (user != null) {
         state = AuthState.authenticated(user);
+        ref.read(wishlistProvider.notifier).syncWithServer();
       } else {
         state = AuthState.guest();
       }
@@ -42,6 +44,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         final user = await ApiAuthService().refreshToken();
         if (user != null) {
           state = AuthState.authenticated(user);
+          ref.read(wishlistProvider.notifier).syncWithServer();
           return;
         }
       } catch (_) {
@@ -66,6 +69,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
       if (user != null) {
         state = AuthState.authenticated(user);
+        ref.read(wishlistProvider.notifier).syncWithServer();
         return true;
       }
       state = AuthState.error('Login failed. Please check your credentials.');
@@ -97,6 +101,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
       if (user != null) {
         state = AuthState.authenticated(user);
+        ref.read(wishlistProvider.notifier).syncWithServer();
         return true;
       }
       state = AuthState.error('Registration failed. Please try again.');
@@ -119,6 +124,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       // Best-effort — clear local state regardless
     }
     await DioClient.clearCookies();
+    ref.read(wishlistProvider.notifier).onLogout();
     state = AuthState.guest();
   }
 

@@ -3,23 +3,63 @@ import '../models/car.dart';
 import '../models/listing.dart';
 import '../models/mock_data.dart';
 import '../repositories/car_repository.dart';
+import '../services/api/api_favorites_service.dart';
+import '../services/api/dio_client.dart';
 import '../utils/cache_manager.dart';
 
 // ============================================================
-// WISHLIST — persisted in Hive
+// WISHLIST — syncs with backend API when authenticated,
+//            falls back to Hive for guest/offline mode
 // ============================================================
 
 class WishlistNotifier extends StateNotifier<List<int>> {
   WishlistNotifier() : super(CacheManager.getWishlistIds());
 
+  final _api = ApiFavoritesService();
+  bool _synced = false;
+
+  /// Called when user logs in — merges local Hive IDs into the server,
+  /// then replaces local state with the server's merged list.
+  Future<void> syncWithServer() async {
+    if (!DioClient.isInitialized) return;
+    try {
+      final localIds = CacheManager.getWishlistIds();
+      List<int> serverIds;
+      if (localIds.isNotEmpty) {
+        serverIds = await _api.syncFavorites(localIds);
+      } else {
+        serverIds = await _api.getFavorites();
+      }
+      state = serverIds;
+      CacheManager.saveWishlistIds(serverIds);
+      _synced = true;
+    } catch (_) {
+      // API failed — keep using local Hive data
+    }
+  }
+
+  /// Called on logout — keep local data but mark as unsynced.
+  void onLogout() {
+    _synced = false;
+  }
 
   void toggle(int carId) {
+    // Optimistic local update
     if (state.contains(carId)) {
       state = state.where((id) => id != carId).toList();
     } else {
       state = [...state, carId];
     }
     CacheManager.saveWishlistIds(state);
+
+    // If synced with server, also update API (fire-and-forget)
+    if (_synced && DioClient.isInitialized) {
+      if (!state.contains(carId)) {
+        _api.removeFavorite(carId).catchError((_) => null);
+      } else {
+        _api.addFavorite(carId).catchError((_) => null);
+      }
+    }
   }
 
   bool isWishlisted(int carId) => state.contains(carId);
@@ -62,6 +102,22 @@ class SearchNotifier extends StateNotifier<SearchState> {
 
   void setFilter(String filter) {
     state = state.copyWith(activeFilter: filter);
+  }
+
+  void setBrand(String brand) {
+    state = state.copyWith(brand: brand, clearBrand: false);
+  }
+
+  void clearBrand() {
+    state = state.copyWith(clearBrand: true);
+  }
+
+  void setCity(String city) {
+    state = state.copyWith(city: city, clearCity: false);
+  }
+
+  void clearCity() {
+    state = state.copyWith(clearCity: true);
   }
 
   void setSortBy(String sortBy) {
@@ -113,6 +169,11 @@ class SearchState {
   final String activeFilter;
   final String sortBy;
 
+  // Brand filter
+  final String? brand;
+  // City filter
+  final String? city;
+
   // Advanced filter fields
   final double? priceMin; // in INR
   final double? priceMax; // in INR
@@ -127,6 +188,8 @@ class SearchState {
     this.query = '',
     this.activeFilter = 'All',
     this.sortBy = 'default',
+    this.brand,
+    this.city,
     this.priceMin,
     this.priceMax,
     this.fuelType,
@@ -167,6 +230,10 @@ class SearchState {
     String? query,
     String? activeFilter,
     String? sortBy,
+    String? brand,
+    bool clearBrand = false,
+    String? city,
+    bool clearCity = false,
     double? priceMin,
     double? priceMax,
     String? fuelType,
@@ -188,6 +255,8 @@ class SearchState {
       query: query ?? this.query,
       activeFilter: activeFilter ?? this.activeFilter,
       sortBy: sortBy ?? this.sortBy,
+      brand: clearBrand ? null : (brand ?? this.brand),
+      city: clearCity ? null : (city ?? this.city),
       priceMin: clearPriceMin ? null : (priceMin ?? this.priceMin),
       priceMax: clearPriceMax ? null : (priceMax ?? this.priceMax),
       fuelType: clearFuelType ? null : (fuelType ?? this.fuelType),
@@ -206,6 +275,8 @@ class SearchState {
     if (activeFilter != 'All') {
       params['body_style'] = activeFilter;
     }
+    if (brand != null && brand!.isNotEmpty) params['brand'] = brand;
+    if (city != null && city!.isNotEmpty) params['location_city'] = city;
     if (sortBy != 'default') params['sortBy'] = sortBy;
 
     // Advanced filter params

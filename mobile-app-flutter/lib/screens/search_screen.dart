@@ -8,7 +8,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../constants/colors.dart';
 import '../models/listing.dart';
 import '../providers/app_provider.dart';
-import '../providers/config_provider.dart';
+import '../repositories/car_repository.dart';
 import '../utils/listing_helpers.dart';
 import '../widgets/car/car_list_item.dart';
 import '../widgets/filter/filter_panel.dart';
@@ -63,7 +63,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   Widget build(BuildContext context) {
     final searchState = ref.watch(searchProvider);
     final searchResults = ref.watch(searchResultsProvider);
-    final categoriesAsync = ref.watch(categoriesProvider);
     final topPadding = MediaQuery.of(context).padding.top;
 
     return Scaffold(
@@ -200,82 +199,89 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 ),
               ),
 
-              // b) Filter chips row — loaded from categoriesProvider
-              Padding(
-                padding: const EdgeInsets.only(top: 16),
-                child: SizedBox(
-                  height: 40,
-                  child: categoriesAsync.when(
-                    data: (categories) {
-                      final chips = [
-                        'All',
-                        ...categories.map((c) => c.name),
-                      ];
-                      return ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        separatorBuilder: (_, _) => const SizedBox(width: 10),
-                        itemCount: chips.length,
-                        itemBuilder: (context, index) {
-                          final chip = chips[index];
-                          final isActive = searchState.activeFilter == chip;
-
-                          return GestureDetector(
-                            onTap: () {
-                              ref
-                                  .read(searchProvider.notifier)
-                                  .setFilter(chip);
-                            },
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 18,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isActive
-                                    ? AppColors.gold
-                                    : AppColors.bgCard,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: isActive
-                                      ? AppColors.gold
-                                      : AppColors.borderLight,
-                                  width: 1,
-                                ),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  chip,
-                                  style: GoogleFonts.dmSans(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: isActive
-                                        ? AppColors.bg
-                                        : AppColors.textSecondary,
-                                  ),
-                                ),
+              // Active brand filter chip
+              if (searchState.brand != null && searchState.brand!.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(left: 24, right: 24, top: 12),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Brand: ',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppColors.gold,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              searchState.brand!,
+                              style: GoogleFonts.dmSans(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.bg,
                               ),
                             ),
-                          );
-                        },
-                      );
-                    },
-                    loading: () => ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      separatorBuilder: (_, _) => const SizedBox(width: 10),
-                      itemCount: 6,
-                      itemBuilder: (_, _) => const SkeletonLoader(
-                        width: 80,
-                        height: 40,
-                        borderRadius: 12,
+                            const SizedBox(width: 6),
+                            GestureDetector(
+                              onTap: () => ref.read(searchProvider.notifier).clearBrand(),
+                              child: const Icon(LucideIcons.x, size: 14, color: AppColors.bg),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    error: (_, _) => _buildFallbackChips(searchState),
+                    ],
                   ),
                 ),
-              ),
+
+              // Active city filter chip
+              if (searchState.city != null && searchState.city!.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(left: 24, right: 24, top: 8),
+                  child: Row(
+                    children: [
+                      Text(
+                        'City: ',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppColors.gold,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              searchState.city!,
+                              style: GoogleFonts.dmSans(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.bg,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            GestureDetector(
+                              onTap: () => ref.read(searchProvider.notifier).clearCity(),
+                              child: const Icon(LucideIcons.x, size: 14, color: AppColors.bg),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
               // c) Results count + sort row
               Padding(
@@ -413,7 +419,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       itemCount: listings.length,
       itemBuilder: (context, index) {
         final listing = listings[index];
-        final car = listingToCar(listing);
+        final serverBaseUrl = ref.watch(serverBaseUrlProvider);
+        final car = listingToCar(listing, serverBaseUrl: serverBaseUrl);
         return CarListItem(
           car: car,
           onTap: () => context.push('/car/${listing.id}'),
@@ -510,52 +517,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  /// Fallback chips when categories fail to load
-  Widget _buildFallbackChips(SearchState searchState) {
-    final chips = ['All', 'SUV', 'Sedan', 'Hatchback', 'MUV', 'Luxury'];
-    return ListView.separated(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      separatorBuilder: (_, _) => const SizedBox(width: 10),
-      itemCount: chips.length,
-      itemBuilder: (context, index) {
-        final chip = chips[index];
-        final isActive = searchState.activeFilter == chip;
-
-        return GestureDetector(
-          onTap: () {
-            ref.read(searchProvider.notifier).setFilter(chip);
-          },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(
-              horizontal: 18,
-              vertical: 8,
-            ),
-            decoration: BoxDecoration(
-              color: isActive ? AppColors.gold : AppColors.bgCard,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isActive ? AppColors.gold : AppColors.borderLight,
-                width: 1,
-              ),
-            ),
-            child: Center(
-              child: Text(
-                chip,
-                style: GoogleFonts.dmSans(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: isActive ? AppColors.bg : AppColors.textSecondary,
-                ),
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 

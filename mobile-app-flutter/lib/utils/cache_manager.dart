@@ -27,6 +27,17 @@ class CacheManager {
       Hive.openBox(_settingsBox),
       Hive.openBox(_bookingsBox),
     ]);
+
+    // One-time migration: clear stale wishlist data from development
+    await _runMigrations();
+  }
+
+  static Future<void> _runMigrations() async {
+    const migrationKey = 'wishlist_cleared_v1';
+    if (getSetting(migrationKey) != 'true') {
+      await clearWishlist();
+      await saveSetting(migrationKey, 'true');
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -199,6 +210,12 @@ class CacheManager {
       }
     } catch (_) {}
     return [];
+  }
+
+  /// Clear the wishlist (used on logout or to remove stale data).
+  static Future<void> clearWishlist() async {
+    final box = Hive.box(_wishlistBox);
+    await box.delete('ids');
   }
 
   // ---------------------------------------------------------------------------

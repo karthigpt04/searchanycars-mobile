@@ -14,6 +14,7 @@ class Car {
   final String badge;
   final String emi;
   final bool certified;
+  final String? imageUrl;
   final InspectionReport inspection;
   final DealerSummary dealer;
 
@@ -33,6 +34,7 @@ class Car {
     required this.badge,
     required this.emi,
     this.certified = true,
+    this.imageUrl,
     required this.inspection,
     required this.dealer,
   });

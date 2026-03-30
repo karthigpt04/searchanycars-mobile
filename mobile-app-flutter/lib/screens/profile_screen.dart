@@ -5,40 +5,15 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../constants/colors.dart';
-import '../models/mock_data.dart';
 import '../models/auth_state.dart';
 import '../providers/auth_provider.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
-  IconData _mapIcon(String iconName) {
-    switch (iconName) {
-      case 'car':
-        return LucideIcons.car;
-      case 'heart':
-        return LucideIcons.heart;
-      case 'compare':
-        return LucideIcons.arrowLeftRight;
-      case 'shield':
-        return LucideIcons.shield;
-      case 'phone':
-        return LucideIcons.phone;
-      case 'bell':
-        return LucideIcons.bell;
-      case 'settings':
-        return LucideIcons.settings;
-      case 'logOut':
-        return LucideIcons.logOut;
-      default:
-        return LucideIcons.circleEllipsis;
-    }
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authProvider);
-    final menuItems = MockData.profileMenuItems;
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -58,34 +33,86 @@ class ProfileScreen extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Column(
                   children: [
-                    // Standard menu items from MockData
-                    ...menuItems.asMap().entries.map((entry) {
-                      final index = entry.key;
-                      final item = entry.value;
-                      return _buildMenuItem(
-                        icon: _mapIcon(item['icon'] as String),
-                        label: item['label'] as String,
-                        count: item['count'] as int,
-                        index: index,
-                      );
-                    }),
-
-                    // Server Settings menu item
+                    // My Bookings
                     _buildMenuItem(
-                      icon: _mapIcon('settings'),
+                      icon: LucideIcons.car,
+                      label: 'My Bookings',
+                      count: 0,
+                      index: 0,
+                      onTap: () => context.push('/my-bookings'),
+                    ),
+
+                    // Compare History
+                    _buildMenuItem(
+                      icon: LucideIcons.arrowLeftRight,
+                      label: 'Compare History',
+                      count: 0,
+                      index: 1,
+                      onTap: () => context.go('/compare'),
+                    ),
+
+                    // Support Center
+                    _buildMenuItem(
+                      icon: LucideIcons.phone,
+                      label: 'Support Center',
+                      count: 0,
+                      index: 2,
+                      onTap: () => _showSupportDialog(context),
+                    ),
+
+                    // Edit Profile — only if authenticated
+                    if (auth.isAuthenticated)
+                      _buildMenuItem(
+                        icon: LucideIcons.userCog,
+                        label: 'Edit Profile',
+                        count: 0,
+                        index: 3,
+                        onTap: () => _showInfoDialog(
+                          context,
+                          'Edit Profile',
+                          'Profile editing will be available soon.',
+                        ),
+                      ),
+
+                    // Change Password — only if authenticated
+                    if (auth.isAuthenticated)
+                      _buildMenuItem(
+                        icon: LucideIcons.lock,
+                        label: 'Change Password',
+                        count: 0,
+                        index: 4,
+                        onTap: () => _showInfoDialog(
+                          context,
+                          'Change Password',
+                          'Password change will be available soon.',
+                        ),
+                      ),
+
+                    // Server Settings
+                    _buildMenuItem(
+                      icon: LucideIcons.settings,
                       label: 'Server Settings',
                       count: 0,
-                      index: menuItems.length,
+                      index: 5,
                       onTap: () => context.push('/settings'),
+                    ),
+
+                    // About
+                    _buildMenuItem(
+                      icon: LucideIcons.info,
+                      label: 'About SearchAnyCars',
+                      count: 0,
+                      index: 6,
+                      onTap: () => _showAboutDialog(context),
                     ),
 
                     // Logout — only if authenticated
                     if (auth.isAuthenticated)
                       _buildMenuItem(
-                        icon: _mapIcon('logOut'),
+                        icon: LucideIcons.logOut,
                         label: 'Logout',
                         count: 0,
-                        index: menuItems.length + 1,
+                        index: 7,
                         isDanger: true,
                         onTap: () async {
                           final confirmed = await _showLogoutDialog(context);
@@ -451,6 +478,189 @@ class ProfileScreen extends ConsumerWidget {
           delay: Duration(milliseconds: 100 + index * 60),
           curve: Curves.easeOut,
         );
+  }
+
+  void _showInfoDialog(BuildContext context, String title, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.bgCard,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: Text(
+          title,
+          style: GoogleFonts.dmSans(
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        content: Text(
+          message,
+          style: GoogleFonts.dmSans(
+            color: AppColors.textSecondary,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(
+              'OK',
+              style: GoogleFonts.dmSans(
+                color: AppColors.gold,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSupportDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.bgCard,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: Row(
+          children: [
+            const Icon(LucideIcons.phone, size: 20, color: AppColors.gold),
+            const SizedBox(width: 10),
+            Text(
+              'Support Center',
+              style: GoogleFonts.dmSans(
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _supportRow(LucideIcons.phone, 'Call Us', '+91 98765 43210'),
+            const SizedBox(height: 12),
+            _supportRow(LucideIcons.mail, 'Email', 'support@searchanycars.com'),
+            const SizedBox(height: 12),
+            _supportRow(LucideIcons.messageCircle, 'WhatsApp', '+91 98765 43210'),
+            const SizedBox(height: 16),
+            Text(
+              'Available 24/7 for your queries',
+              style: GoogleFonts.dmSans(
+                fontSize: 12,
+                color: AppColors.textMuted,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(
+              'Close',
+              style: GoogleFonts.dmSans(
+                color: AppColors.gold,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _supportRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: AppColors.gold),
+        const SizedBox(width: 10),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: GoogleFonts.dmSans(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            Text(
+              value,
+              style: GoogleFonts.dmSans(
+                fontSize: 14,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  void _showAboutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.bgCard,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: Text(
+          'About SearchAnyCars',
+          style: GoogleFonts.dmSans(
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "India's Trusted Used Car Platform",
+              style: GoogleFonts.dmSans(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.gold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'SearchAnyCars aggregates dealer inventory and presents a unified brand experience for buying pre-owned and new cars.',
+              style: GoogleFonts.dmSans(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Version 1.0.0',
+              style: GoogleFonts.dmSans(
+                fontSize: 12,
+                color: AppColors.textMuted,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(
+              'Close',
+              style: GoogleFonts.dmSans(
+                color: AppColors.gold,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<bool?> _showLogoutDialog(BuildContext context) {

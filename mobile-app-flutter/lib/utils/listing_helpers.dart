@@ -6,7 +6,8 @@ import '../models/listing.dart';
 ///
 /// This bridge allows the existing card widgets to render API data
 /// without requiring a full widget rewrite.
-Car listingToCar(Listing l) {
+Car listingToCar(Listing l, {String serverBaseUrl = ''}) {
+  final imageUrls = l.imageUrls(serverBaseUrl);
   return Car(
     id: l.id,
     name: l.title,
@@ -23,6 +24,7 @@ Car listingToCar(Listing l) {
     badge: l.badgeText,
     emi: l.emiFormatted,
     certified: l.isCertified,
+    imageUrl: imageUrls.isNotEmpty ? imageUrls.first : null,
     inspection: InspectionReport(
       overallScore: (l.inspectionScore ?? 90) / 20, // Convert 0-100 to 0-5
       categories: const [

@@ -6,6 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../constants/colors.dart';
 import '../providers/app_provider.dart';
 import '../models/listing.dart';
+import '../repositories/car_repository.dart';
 import '../utils/listing_helpers.dart';
 import '../widgets/car/car_list_item.dart';
 import '../widgets/ui/skeleton_loader.dart';
@@ -81,7 +82,8 @@ class WishlistScreen extends ConsumerWidget {
       itemCount: listings.length,
       itemBuilder: (context, index) {
         final listing = listings[index];
-        final car = listingToCar(listing);
+        final serverBaseUrl = ref.watch(serverBaseUrlProvider);
+        final car = listingToCar(listing, serverBaseUrl: serverBaseUrl);
         return CarListItem(
           car: car,
           onTap: () => context.push('/car/${car.id}'),
